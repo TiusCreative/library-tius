@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../../lib/firebase';
 import { ArrowLeft, ExternalLink, Download, Lock, Share2 } from 'lucide-react';
+import BookReader from '../../../components/BookReader';
 
 export default function ReadEbook() {
   const params = useParams();
@@ -15,6 +16,8 @@ export default function ReadEbook() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [wrongPassword, setWrongPassword] = useState(false);
+  const [htmlContent, setHtmlContent] = useState('');
+  const [useBookReader, setUseBookReader] = useState(false);
 
   useEffect(() => {
     const ebookRef = ref(db, `ebooks/${params.id}`);
@@ -63,6 +66,31 @@ export default function ReadEbook() {
     }
   };
 
+  // Convert DOCX to HTML using mammoth
+  const convertDocxToHtml = async (fileUrl) => {
+    try {
+      const mammoth = await import('mammoth');
+      const response = await fetch(fileUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      setHtmlContent(result.value);
+      setUseBookReader(true);
+    } catch (error) {
+      console.error('Error converting DOCX:', error);
+      setUseBookReader(false);
+    }
+  };
+
+  // Load DOCX content when unlocked
+  useEffect(() => {
+    if (isUnlocked && ebook && ebook.fileUrl) {
+      const isDocx = ebook.fileUrl?.toLowerCase().endsWith('.docx') || ebook.fileUrl?.toLowerCase().endsWith('.doc');
+      if (isDocx) {
+        convertDocxToHtml(ebook.fileUrl);
+      }
+    }
+  }, [isUnlocked, ebook]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -91,6 +119,11 @@ export default function ReadEbook() {
   const isPdf = ebook.fileUrl?.toLowerCase().endsWith('.pdf');
   const isDocx = ebook.fileUrl?.toLowerCase().endsWith('.docx') || ebook.fileUrl?.toLowerCase().endsWith('.doc');
 
+  // Show BookReader for DOCX files when content is loaded
+  if (useBookReader && htmlContent) {
+    return <BookReader content={htmlContent} title={ebook.title} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -105,6 +138,22 @@ export default function ReadEbook() {
               Kembali
             </button>
             <div className="flex items-center gap-3">
+              {isDocx && useBookReader && (
+                <button
+                  onClick={() => setUseBookReader(false)}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  View Original
+                </button>
+              )}
+              {isDocx && !useBookReader && htmlContent && (
+                <button
+                  onClick={() => setUseBookReader(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Reader Mode
+                </button>
+              )}
               <button
                 onClick={handleShare}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
