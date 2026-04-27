@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../lib/firebase';
-import { Search, Book, ExternalLink, Share2, Lock, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Book, ExternalLink, Share2, Lock, X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 
 export default function HomePage() {
   const [ebooks, setEbooks] = useState([]);
@@ -12,7 +12,23 @@ export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEbook, setSelectedEbook] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const ebooksPerRow = 15;
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   useEffect(() => {
     const ebooksRef = ref(db, 'ebooks');
@@ -107,6 +123,17 @@ export default function HomePage() {
     }
   };
 
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShowInstallBanner(false);
+      }
+      setDeferredPrompt(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -117,6 +144,31 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* PWA Install Banner */}
+      {showInstallBanner && (
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 bg-blue-600 text-white rounded-lg shadow-lg p-4 z-50">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <p className="font-semibold mb-1">Install App</p>
+              <p className="text-sm text-blue-100">Install Library Ebook for better experience</p>
+            </div>
+            <button
+              onClick={() => setShowInstallBanner(false)}
+              className="text-blue-200 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <button
+            onClick={handleInstallClick}
+            className="mt-3 w-full bg-white text-blue-600 font-medium py-2 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Install Now
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

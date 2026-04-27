@@ -1,4 +1,5 @@
 import './globals.css';
+import Script from 'next/script';
 
 export default function RootLayout({ children }) {
   return (
@@ -11,7 +12,17 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="apple-touch-icon" href="/logotc.jpg" />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Script id="pwa-install" strategy="afterInteractive">
+          {`
+            window.addEventListener('beforeinstallprompt', (e) => {
+              e.preventDefault();
+              window.deferredPrompt = e;
+            });
+          `}
+        </Script>
+      </body>
     </html>
   );
 }
