@@ -2,6 +2,8 @@ import { db } from '../../../../lib/firebase';
 import { ref, get, update } from 'firebase/database';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
   try {
     const { bookId } = await request.json();
